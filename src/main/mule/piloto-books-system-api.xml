@@ -212,14 +212,14 @@ output application/json
  authorId: attributes.uriParams.authorId as Number
 }]]]></db:input-parameters>
 		</db:select>
-		<ee:transform doc:name="responseAuthorById">
-            <ee:variables>
-                <ee:set-variable variableName="authorId"><![CDATA[%dw 2.0
+		<ee:transform doc:name="Transform Message" doc:id="7395d5b7-90b7-4949-8888-bda602fc41e6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-payload]]></ee:set-variable>
-            </ee:variables>
-        </ee:transform>
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
     </flow>
     <flow name="get:\books\(bookId):piloto-books-system-api-config">
         <ee:transform doc:name="Transform Message">
