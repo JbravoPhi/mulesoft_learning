@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
-http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
     <http:listener-config name="piloto-books-system-api-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="8081" />
     </http:listener-config>
-    <apikit:config name="piloto-books-system-api-config" api="resource::209ef67a-ae27-4f34-965a-a34fed477013:ejercicio_oas_a_raml:1.0.1:raml:zip:piloto-books-system-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-	<flow name="piloto-books-system-api-main">
+    <apikit:config name="piloto-books-system-api-config" api="resource::209ef67a-ae27-4f34-965a-a34fed477013:ejercicio_oas_a_raml:1.0.3:raml:zip:piloto-books-system-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="piloto-books-system-api-main">
         <http:listener config-ref="piloto-books-system-api-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
@@ -125,11 +124,19 @@ output application/json
         </error-handler>
     </flow>
     <flow name="put:\books\(bookId):application\json:piloto-books-system-api-config">
-        <ee:transform doc:name="Transform Message">
-            <ee:variables>
-                <ee:set-variable variableName="bookId">attributes.uriParams.'bookId'</ee:set-variable>
-            </ee:variables>
-        </ee:transform>
+        <db:update doc:name="Update" doc:id="e7257eab-e37f-49aa-9fd3-44c808fc2e38" config-ref="Database_Config">
+			<db:sql ><![CDATA[UPDATE books
+   SET name   = :name,
+       author = :author,
+       year   = :year
+ WHERE id     = :bookId;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+  bookId: (attributes.uriParams.bookId) as Number,          // o (attributes.uriParams.bookId) as Number
+  name:   payload.name,
+  author: payload.author,
+  year:   (payload.year as Number)
+}]]]></db:input-parameters>
+		</db:update>
         <ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -140,11 +147,13 @@ output application/json
         </ee:transform>
     </flow>
     <flow name="delete:\books\(bookId):piloto-books-system-api-config">
-        <ee:transform doc:name="Transform Message">
-            <ee:variables>
-                <ee:set-variable variableName="bookId">attributes.uriParams.'bookId'</ee:set-variable>
-            </ee:variables>
-        </ee:transform>
+        <db:delete doc:name="Delete-book" doc:id="b689278d-4598-4f00-bc28-351478ee0a29" config-ref="Database_Config">
+			<db:sql ><![CDATA[DELETE FROM books
+ WHERE id = :bookId;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+  bookId: (attributes.uriParams.bookId) as Number
+}]]]></db:input-parameters>
+		</db:delete>
         <ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -156,9 +165,9 @@ output application/json
     </flow>
     <flow name="get:\authors:piloto-books-system-api-config">
         <db:select doc:name="databaseAuthors" doc:id="3eb38d89-52e8-4543-aefe-78aff794cbf1" config-ref="Database_Config">
-			<db:sql ><![CDATA[SELECT * FROM authors]]></db:sql>
-		</db:select>
-		<ee:transform doc:name="allAtuthorsResponse">
+            <db:sql><![CDATA[SELECT * FROM authors]]></db:sql>
+        </db:select>
+        <ee:transform doc:name="allAtuthorsResponse">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
@@ -168,6 +177,9 @@ payload]]></ee:set-payload>
         </ee:transform>
     </flow>
     <flow name="get:\books:piloto-books-system-api-config">
+        <db:select doc:name="databaseBooks" doc:id="e35f2226-54e5-4e42-94db-e0122479a77b" config-ref="Database_Config">
+            <db:sql><![CDATA[SELECT * FROM books]]></db:sql>
+        </db:select>
         <ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -203,41 +215,46 @@ output application/json
         </ee:transform>
     </flow>
     <flow name="get:\authors\(authorId):piloto-books-system-api-config">
-		<db:select doc:name="databaseAuthors" doc:id="9ab05db3-36ca-43cd-8712-9c0d377ac5e6" config-ref="Database_Config">
-			<db:sql><![CDATA[SELECT * FROM authors WHERE id =:authorId]]></db:sql>
-			<db:input-parameters ><![CDATA[#[{
+        <db:select doc:name="databaseAuthors" doc:id="9ab05db3-36ca-43cd-8712-9c0d377ac5e6" config-ref="Database_Config">
+            <db:sql><![CDATA[SELECT * FROM authors WHERE id =:authorId]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
  authorId: attributes.uriParams.authorId as Number
 }]]]></db:input-parameters>
-		</db:select>
-		<ee:transform doc:name="Transform Message" doc:id="7395d5b7-90b7-4949-8888-bda602fc41e6" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-payload]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-    </flow>
-    <flow name="get:\books\(bookId):piloto-books-system-api-config">
-        <ee:transform doc:name="Transform Message">
-            <ee:variables>
-                <ee:set-variable variableName="bookId">attributes.uriParams.'bookId'</ee:set-variable>
-            </ee:variables>
-        </ee:transform>
-        <ee:transform doc:name="Transform Message">
+        </db:select>
+        <ee:transform doc:name="Transform Message" doc:id="7395d5b7-90b7-4949-8888-bda602fc41e6">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{
-  name: "Don Quijote de la Mancha",
-  author: "Miguel de Cervantes",
-  year: 1605
-} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\books\(bookId):piloto-books-system-api-config">
+        <db:select doc:name="databaseBooksId" doc:id="402c736e-3ef5-4e1e-be43-8627221b6359" config-ref="Database_Config">
+            <db:sql><![CDATA[SELECT * FROM books WHERE id =:bookId]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+ bookId: (attributes.uriParams.bookId) as Number
+}]]]></db:input-parameters>
+        </db:select>
+        <ee:transform doc:name="Transform Message" doc:id="087b56c3-61b1-4609-b13d-8cc0ae1a3f4a">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
             </ee:message>
         </ee:transform>
     </flow>
     <flow name="post:\authors:application\json:piloto-books-system-api-config">
+        <db:insert doc:name="database-Insert-author" doc:id="1d99dc7f-246b-485d-ba23-76f5f9c0b9de" config-ref="Database_Config">
+            <db:sql><![CDATA[INSERT INTO authors (name, country)
+VALUES (:name, :country);]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+  name: payload.name,
+  country: payload.country
+}]]]></db:input-parameters>
+        </db:insert>
         <ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -248,6 +265,15 @@ output application/json
         </ee:transform>
     </flow>
     <flow name="post:\books:application\json:piloto-books-system-api-config">
+        <db:insert doc:name="database-Insert-book" doc:id="d119cf1c-e895-4227-8147-68cb5aefa468" config-ref="Database_Config">
+            <db:sql><![CDATA[INSERT INTO books (name, author, year)
+VALUES (:name, :author, :year);]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+	name: payload.name,
+	author: payload.author,
+	year: payload.year
+}]]]></db:input-parameters>
+        </db:insert>
         <ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
